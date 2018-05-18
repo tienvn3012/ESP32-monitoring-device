@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <pthread.h>
+#include <stdlib.h>
 
 #include "esp_wifi.h"
 #include "esp_system.h"
@@ -172,16 +173,33 @@ void data_cb(void *self, void *params)
 
     if((strcmp(topic,"nct_authentication_result_2") == 0)){
 
-        char* recv = (char*)event_data->data;
+        char *recv = (char*)event_data->data;
+        char *token;
+        char result[5];
+        char time[4];
+        int count = 0;
+        token = strtok(recv, "_");
+        while(count <2){
+            if(count == 0)
+                strcpy(result,token);
+            if(count == 1)
+                strcpy(time,token);
+            printf("%s\n", token);
+            token = strtok(NULL, "_");
+            
+            count++;
+            
+        }
         
-        if((strcmp(recv,"PASS")) == 0){
+        if((strcmp(result,"PASS")) == 0){
             printf("CHECK PASSWORD DONE !!!!\n");
 
             pthread_t tid;
             pthread_create(&tid, NULL,keep_alive, (void*)client);
 
             setDHTgpio(4);
-            while(1){
+            // while(1){
+                vTaskDelay( 1000 / portTICK_RATE_MS );
                 int ret = readDHT();
                 char buf[72];
                 // sprintf(buf,"nct;%.1f;%.1f;900;7.0;true;\"00/00/00 00:00:00\";nct"
@@ -190,8 +208,12 @@ void data_cb(void *self, void *params)
                     ,getTemperature(),getHumidity(),getPH());
                 mqtt_publish(client, "nct_collect",buf,28, 0, 0);
                 printf("publish : %s", buf);
-                vTaskDelay( 30*1000 / portTICK_RATE_MS );  
-            }
+                // vTaskDelay( 30*1000 / portTICK_RATE_MS );  
+            // }
+                 vTaskDelay( 3000 / portTICK_RATE_MS );
+            float time_sleep = atof(time);
+            printf("time sleep %d\n",time_sleep );
+            esp_deep_sleep(1000000LL * time_sleep*60);
 
         }else{
             printf("CHECK PASSWORD FAILED !!!!\n");
@@ -272,8 +294,8 @@ static void wifi_conn_init(void)
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = "NCT",
-            .password = "dccndccn",
+            .ssid = "WIFI-HUST",
+            .password = "",
         },
     };
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
